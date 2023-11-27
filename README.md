@@ -2,19 +2,19 @@
 
 Move all messages from one SQS queue, to another.
 
+This was originally a fork of [scottjbarr/sqsmv](https://github.com/scottjbarr/sqsmv.git) with is no longer actively maintained. 
 
 ## Installation
 
 ### Source
 
-    go get github.com/scottjbarr/sqsmv
+1. Clone the repo
+1. `go build -o /some/path/sqsmv main.go`
 
 
 ### Binaries
 
-Download the appropriate binary from the
-[Releases](https://github.com/scottjbarr/sqsmv/releases) page.
-
+Binaries are not currently offered.
 
 ## Configuration
 
@@ -48,5 +48,6 @@ Create some SQS messages to play with using the AWS CLI.
 The MIT License (MIT)
 
 Copyright (c) 2016-2018 Scott Barr
+Copyright (c) 2023+     Nate Meyer
 
 See [LICENSE.md](LICENSE.md)
