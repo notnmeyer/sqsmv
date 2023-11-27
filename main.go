@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -15,6 +16,8 @@ func main() {
 	src := flag.String("src", "", "source queue")
 	dest := flag.String("dest", "", "destination queue")
 	clients := flag.Int("clients", 1, "number of clients")
+	delayRaw := flag.String("delay", "0ms", "delay between processing messages per client. must include unit suffix (ms, s, h, ...)")
+	maxMessages := flag.Int64("max-messages", 10, "the number of messages to process per-client")
 	flag.Parse()
 
 	if *src == "" || *dest == "" || *clients < 1 {
@@ -26,6 +29,12 @@ func main() {
 	log.Printf("destination queue : %v", *dest)
 	log.Printf("number of clients : %v", *clients)
 
+	delay, err := time.ParseDuration(*delayRaw)
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("delay : %s", delay.String())
+
 	// enable automatic use of AWS_PROFILE like awscli and other tools do.
 	opts := session.Options{
 		SharedConfigState: session.SharedConfigEnable,
@@ -36,13 +45,12 @@ func main() {
 		panic(err)
 	}
 
-	maxMessages := int64(10)
 	waitTime := int64(0)
 	messageAttributeNames := aws.StringSlice([]string{"All"})
 
 	rmin := &sqs.ReceiveMessageInput{
 		QueueUrl:              src,
-		MaxNumberOfMessages:   &maxMessages,
+		MaxNumberOfMessages:   maxMessages,
 		WaitTimeSeconds:       &waitTime,
 		MessageAttributeNames: messageAttributeNames,
 	}
@@ -50,15 +58,15 @@ func main() {
 	var wg sync.WaitGroup
 	for i := 1; i <= *clients; i++ {
 		wg.Add(i)
-		go transferMessages(sess, rmin, dest, &wg)
+		go transferMessages(sess, rmin, dest, &wg, delay)
 	}
 	wg.Wait()
 
 	log.Println("all done")
 }
 
-//transferMessages loops, transferring a number of messages from the src to the dest at an interval.
-func transferMessages(theSession *session.Session, rmin *sqs.ReceiveMessageInput, dest *string, wgOuter *sync.WaitGroup) {
+// transferMessages loops, transferring a number of messages from the src to the dest at an interval.
+func transferMessages(theSession *session.Session, rmin *sqs.ReceiveMessageInput, dest *string, wgOuter *sync.WaitGroup, delay time.Duration) {
 	client := sqs.New(theSession)
 
 	lastMessageCount := int(1)
@@ -114,7 +122,11 @@ func transferMessages(theSession *session.Session, rmin *sqs.ReceiveMessageInput
 						*m.ReceiptHandle,
 						err)
 				}
+
 			}(m)
+
+			// slow down individual message processing
+			time.Sleep(delay)
 		}
 
 		// wait for all jobs from this batch...
