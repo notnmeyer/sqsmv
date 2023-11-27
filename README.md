@@ -9,6 +9,7 @@ This was originally a fork of [scottjbarr/sqsmv](https://github.com/scottjbarr/s
 ### Source
 
 1. Clone the repo
+1. `go mod tidy` 
 1. `go build -o /some/path/sqsmv main.go`
 
 
